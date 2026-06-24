@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOV Coaching Report Generator — The Sanctuary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Lato:ital,wght@0,400;0,700;0,900;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"
+        integrity="sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz"
+        crossorigin="anonymous"></script>
+<style>
+  :root{
+    --ink:#122118; --paper:#F6F9F5; --paper-deep:#EDF3EC;
+    --evergreen:#155230; --evergreen-mid:#2E9455; --evergreen-bg:#F0F7F2;
+    --harbor:#003A5C; --harbor-mid:#006080; --harbor-bg:#E5F2F6;
+    --gold:#E8A020; --gold-bg:#FFF8EC;
+    --moss:#6A8A74; --moss-soft:#9AB0A0;
+    --clay:#C8392A; --violet:#6030A0; --violet-bg:#F4EEFF;
+    --line:#D7E3DA; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Lato',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .page{max-width:760px;margin:0 auto;padding:0 24px 80px;}
+
+  .masthead{padding:56px 0 28px;border-bottom:1px solid var(--line);margin-bottom:36px;}
+  .eyebrow{font-weight:900;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--moss);margin:0 0 10px;}
+  .masthead h1{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(28px,5vw,44px);
+    line-height:1.04;letter-spacing:-0.01em;margin:0 0 10px;color:var(--evergreen);
+  }
+  .masthead .sub{font-size:15px;color:var(--moss);margin:0;max-width:560px;}
+  .masthead .sub strong{color:var(--ink);font-weight:700;}
+
+  #upload-view{display:flex;flex-direction:column;align-items:center;padding:40px 0 20px;}
+  .dropzone{
+    width:100%;max-width:520px;border:2px dashed var(--moss-soft);border-radius:4px;
+    background:var(--white);padding:48px 36px 40px;text-align:center;cursor:pointer;
+    transition:border-color .18s ease, background .18s ease;position:relative;
+  }
+  .dropzone:hover,.dropzone.drag{border-color:var(--evergreen-mid);background:var(--evergreen-bg);}
+  .dropzone:focus-visible{outline:3px solid var(--gold);outline-offset:3px;}
+  .receipt{
+    width:84px;height:104px;margin:0 auto 22px;background:var(--paper-deep);
+    border:1.5px solid var(--moss-soft);position:relative;
+    clip-path:polygon(0% 6%,8% 0%,16% 6%,24% 0%,32% 6%,40% 0%,48% 6%,56% 0%,64% 6%,72% 0%,80% 6%,88% 0%,96% 6%,100% 0%,100% 100%,0% 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding-top:8px;
+  }
+  .receipt span{display:block;width:54px;height:3px;background:var(--line);border-radius:1px;}
+  .receipt span.short{width:34px;}
+  .receipt span.accent{background:var(--gold);width:40px;}
+  .dropzone h2{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin:0 0 8px;}
+  .dropzone p{font-size:13.5px;color:var(--moss);margin:0 0 18px;line-height:1.5;}
+  .browse-btn{
+    display:inline-block;font-weight:700;font-size:13.5px;color:var(--white);
+    background:var(--evergreen);padding:11px 22px;border-radius:3px;border:none;cursor:pointer;
+    transition:background .15s ease;
+  }
+  .browse-btn:hover{background:var(--evergreen-mid);}
+  .browse-btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+  .filehint{margin-top:16px;font-size:11.5px;color:var(--moss-soft);}
+  #file-input{display:none;}
+
+  .error-box{
+    max-width:520px;margin:18px auto 0;background:#FFF0F0;border:1px solid #F0C0BC;
+    color:var(--clay);padding:13px 16px;border-radius:3px;font-size:13.5px;font-weight:700;display:none;
+  }
+  .loading-box{max-width:520px;margin:18px auto 0;color:var(--moss);font-size:13.5px;font-weight:700;display:none;text-align:center;}
+
+  #result-view{display:none;text-align:center;padding:32px 0;}
+  .result-card{
+    background:var(--white);border:1px solid var(--line);border-radius:6px;
+    padding:40px 36px;max-width:480px;margin:0 auto;
+  }
+  .result-icon{
+    width:56px;height:56px;margin:0 auto 18px;border-radius:50%;
+    background:var(--evergreen-bg);display:flex;align-items:center;justify-content:center;
+    font-size:26px;color:var(--evergreen);
+  }
+  .result-card h2{font-family:'Syne',sans-serif;font-size:20px;margin:0 0 8px;color:var(--ink);}
+  .result-card p{font-size:13.5px;color:var(--moss);margin:0 0 22px;line-height:1.6;}
+  .result-stats{
+    display:flex;justify-content:center;gap:28px;margin-bottom:24px;padding:16px 0;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .result-stats .stat .v{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--evergreen-mid);}
+  .result-stats .stat .l{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--moss-soft);margin-top:2px;}
+  .download-btn{
+    display:inline-block;font-weight:700;font-size:14px;color:var(--white);
+    background:var(--gold);padding:13px 28px;border-radius:3px;border:none;cursor:pointer;
+    transition:background .15s ease;
+  }
+  .download-btn:hover{background:#D4901A;}
+  .download-btn:focus-visible{outline:3px solid var(--evergreen);outline-offset:2px;}
+  .reset-link{
+    display:block;margin-top:18px;font-size:12.5px;font-weight:700;color:var(--evergreen);
+    background:none;border:none;cursor:pointer;text-decoration:underline;
+  }
+  .reset-link:hover{color:var(--gold);}
+
+  @media (prefers-reduced-motion: reduce){ * { animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <p class="eyebrow">The Sanctuary &middot; Internal Tool</p>
+    <h1>AOV Coaching Report Generator</h1>
+    <p class="sub">Drop in a Treez <strong>Product Summary</strong> CSV export to generate the daily coaching report &mdash; same format, same logic, downloaded as a real .xlsx file.</p>
+  </div>
+
+  <div id="upload-view">
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload CSV file">
+      <div class="receipt"><span></span><span class="short"></span><span class="accent"></span><span class="short"></span></div>
+      <h2>Drop your CSV here</h2>
+      <p>or click below to browse for the Treez Product Summary export</p>
+      <button class="browse-btn" id="browse-btn" type="button">Choose File</button>
+      <input type="file" id="file-input" accept=".csv">
+      <p class="filehint">Nothing is uploaded anywhere &mdash; the file is read and processed entirely in your browser.</p>
+    </div>
+    <div class="error-box" id="error-box"></div>
+    <div class="loading-box" id="loading-box">Building report&hellip;</div>
+  </div>
+
+  <div id="result-view">
+    <div class="result-card">
+      <div class="result-icon">✓</div>
+      <h2 id="result-title">Report ready</h2>
+      <p id="result-sub">Two tabs &mdash; Sales Floor and Delivery &mdash; styled and formatted exactly like the daily report.</p>
+      <div class="result-stats">
+        <div class="stat"><div class="v" id="stat-sf">—</div><div class="l">Store AOV</div></div>
+        <div class="stat"><div class="v" id="stat-dl">—</div><div class="l">Delivery AOV</div></div>
+      </div>
+      <button class="download-btn" id="download-btn" type="button">Download .xlsx</button>
+      <button class="reset-link" id="reset-btn" type="button">Load a different file</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CSV PARSER — RFC4180-ish, no external dependencies
+// ════════════════════════════════════════════════════════════
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let row = [], field = '', inQuotes = false, i = 0;
+  const len = text.length;
+  while (i < len) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++; continue;
+    } else {
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === ',') { row.push(field); field = ''; i++; continue; }
+      if (c === '\r') { i++; continue; }
+      if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+      field += c; i++; continue;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  if (rows.length === 0) return [];
+  const headers = rows[0];
+  const out = [];
+  for (let r = 1; r < rows.length; r++) {
+    const line = rows[r];
+    if (line.length === 1 && line[0] === '') continue;
+    const obj = Object.create(null); // no prototype chain: CSV headers are attacker-controlled, this fully eliminates any __proto__/constructor interaction
+    for (let c = 0; c < headers.length; c++) obj[headers[c]] = line[c] !== undefined ? line[c] : '';
+    out.push(obj);
+  }
+  return out;
+}
+
+// ════════════════════════════════════════════════════════════
+// CONFIG — mirrors sanctuary_reports.py
+// ════════════════════════════════════════════════════════════
+const SF_AOV_GOAL = 65.0, SF_ADDON_GOAL = 4.0, DL_AOV_GOAL = 100.0;
+const NAME_PATTERNS = [
+  [/\bashtyn\b|\bashyn\b|\bash\b/i, 'Ashtyn'],
+  [/\brayven\b/i, 'Rayven'],
+  [/\bdonavn\b|\bdonavan\b/i, 'Donavan'],
+  [/\bdenelle\b/i, 'Denelle'],
+  [/\bparit\b/i, 'Parit'],
+  [/\bkathleen\b|\bkat\b/i, 'Kat / Kathleen'],
+  [/\brichard\b|\brich\b/i, 'Richard'],
+  [/\bstas\b/i, 'Stas'],
+  [/\bjosh(?:ua)?\b/i, 'Josh'],
+  [/\bnorma\b/i, 'Norma'],
+  [/\balyssa\b/i, 'Alyssa'],
+  [/\bcassie\b/i, 'Cassie'],
+];
+function normalizeDispatcher(note) {
+  for (const [re, name] of NAME_PATTERNS) if (re.test(note)) return name;
+  return 'No Dispatcher Listed';
+}
+const FLOOR_TYPES = new Set(['POS', 'PICKUP']);
+const ADDON_RE = /add.?on/i;
+const IGNORE_CASHIER_RE = /register|sanctuary/i;
+
+// ════════════════════════════════════════════════════════════
+// DATA LAYER — per-day per-employee stats (verified against
+// sanctuary_reports.py to the cent on real data)
+// ════════════════════════════════════════════════════════════
+function parseCoachingData(rows) {
+  const allDates = rows.map(r => r['Date Open']).filter(Boolean);
+  if (allDates.length === 0) throw new Error('No "Date Open" column found \u2014 is this a Treez Product Summary export?');
+  const sortedDates = [...allDates].sort();
+  const lastDateOverall = sortedDates[sortedDates.length - 1];
+  const monthPrefix = lastDateOverall.slice(0, 3);
+  rows = rows.filter(r => (r['Date Open'] || '').startsWith(monthPrefix));
+
+  const sfTix = new Map();
+  for (const r of rows) {
+    const tt = (r['Ticket Type'] || '').toUpperCase();
+    if (!FLOOR_TYPES.has(tt)) continue;
+    if (r['Type'] !== 'Sale') continue;
+    const tid = (r['Ticket ID'] || '').trim();
+    const ch  = (r['Cashier'] || '').trim();
+    const date = r['Date Open'];
+    if (!tid || !ch || IGNORE_CASHIER_RE.test(ch)) continue;
+    const net = parseFloat(r['Net Sales']) || 0;
+    const isAddon = ADDON_RE.test(r['Product Name'] || '');
+    const key = date + '|' + ch;
+    if (!sfTix.has(key)) sfTix.set(key, new Map());
+    const m = sfTix.get(key);
+    if (!m.has(tid)) m.set(tid, { net: 0, addon: 0 });
+    const t = m.get(tid);
+    t.net += net;
+    if (isAddon) t.addon += net;
+  }
+  const empDays = new Map();
+  for (const [key, tixMap] of sfTix.entries()) {
+    const [date, ch] = key.split('|');
+    const valid = [...tixMap.values()].filter(t => t.net > 0);
+    if (valid.length === 0) continue;
+    const net = valid.reduce((s, t) => s + t.net, 0);
+    const addon = valid.reduce((s, t) => s + t.addon, 0);
+    if (!empDays.has(ch)) empDays.set(ch, new Map());
+    empDays.get(ch).set(date, { net, addon, txns: valid.length });
+  }
+
+  function buildEmpStats(empDaysMap) {
+    const out = [];
+    for (const [name, daysMap] of empDaysMap.entries()) {
+      const sortedDays = [...daysMap.keys()].sort();
+      const lastDay = sortedDays[sortedDays.length - 1];
+      const last = daysMap.get(lastDay);
+      const mtdDays = sortedDays.filter(d => d !== lastDay);
+      let mn = 0, mt = 0, ma = 0;
+      for (const d of mtdDays) { const v = daysMap.get(d); mn += v.net; mt += v.txns; ma += v.addon; }
+      let fn = 0, ft = 0, fa = 0;
+      for (const v of daysMap.values()) { fn += v.net; ft += v.txns; fa += v.addon; }
+      out.push({
+        name, lastDay,
+        lastAov: last.txns > 0 ? last.net / last.txns : 0,
+        lastTxns: last.txns,
+        mtdAov: mt > 0 ? mn / mt : (last.txns > 0 ? last.net / last.txns : 0),
+        mtdAdd: mn > 0 ? (ma / mn * 100) : 0,
+        mtdTxns: mt,
+        fullAov: fn / ft,
+        fullAdd: fn > 0 ? (fa / fn * 100) : 0,
+        fullTxns: ft, fullNet: fn,
+      });
+    }
+    return out;
+  }
+  const sfStats = buildEmpStats(empDays);
+
+  const dlTix = new Map();
+  for (const r of rows) {
+    if ((r['Ticket Type'] || '').toUpperCase() !== 'DELIVERY') continue;
+    if (r['Type'] !== 'Sale') continue;
+    const tid = (r['Ticket ID'] || '').trim();
+    if (!tid) continue;
+    const note = (r['Ticket Notes'] || '').trim();
+    const date = r['Date Open'];
+    const disp = normalizeDispatcher(note);
+    const net = parseFloat(r['Net Sales']) || 0;
+    const isAddon = ADDON_RE.test(r['Product Name'] || '');
+    const key = date + '|' + disp;
+    if (!dlTix.has(key)) dlTix.set(key, new Map());
+    const m = dlTix.get(key);
+    if (!m.has(tid)) m.set(tid, { net: 0, addon: 0 });
+    const t = m.get(tid);
+    t.net += net;
+    if (isAddon) t.addon += net;
+  }
+  const dlEmpDays = new Map();
+  for (const [key, tixMap] of dlTix.entries()) {
+    const [date, disp] = key.split('|');
+    if (disp === 'No Dispatcher Listed') continue;
+    const valid = [...tixMap.values()].filter(t => t.net > 0);
+    if (valid.length === 0) continue;
+    const net = valid.reduce((s, t) => s + t.net, 0);
+    const addon = valid.reduce((s, t) => s + t.addon, 0);
+    if (!dlEmpDays.has(disp)) dlEmpDays.set(disp, new Map());
+    dlEmpDays.get(disp).set(date, { net, addon, txns: valid.length });
+  }
+  const dlStats = buildEmpStats(dlEmpDays);
+
+  if (sfStats.length === 0) throw new Error('No Sales Floor (POS/Pickup) transactions found in this file.');
+
+  const storeNet = sfStats.reduce((s, e) => s + e.fullNet, 0);
+  const storeTxns = sfStats.reduce((s, e) => s + e.fullTxns, 0);
+  const storeAov = storeTxns ? storeNet / storeTxns : 0;
+  const storeAdd = storeNet ? sfStats.reduce((s, e) => s + e.fullNet * e.fullAdd / 100, 0) / storeNet * 100 : 0;
+
+  const dlNet = dlStats.reduce((s, e) => s + e.fullNet, 0);
+  const dlTxns = dlStats.reduce((s, e) => s + e.fullTxns, 0);
+  const dlAov = dlTxns ? dlNet / dlTxns : 0;
+
+  // date range label (matches Python _infer_labels)
+  const sameMonth = sortedDates.filter(d => d.startsWith(monthPrefix));
+  const first = sameMonth[0];
+  const last = lastDateOverall;
+
+  return { sfStats, dlStats, storeAov, storeAdd, storeTxns, dlAov, dlTxns, first, last };
+}
+
+// ════════════════════════════════════════════════════════════
+// CLASSIFICATION + COACHING NOTES — mirrors _classify_sf/_dl, _note_sf/_dl
+// ════════════════════════════════════════════════════════════
+function classifySf(s) {
+  if (s.lastTxns < 6 || s.mtdTxns < 5) return 'small';
+  const diff = s.lastAov - s.mtdAov;
+  if (s.lastAov >= SF_AOV_GOAL && s.fullAdd >= SF_ADDON_GOAL) return 'star';
+  if (s.lastAov >= SF_AOV_GOAL) return 'aov_good';
+  if (diff >= 4) return 'trending';
+  if (diff <= -4 && s.mtdAov >= SF_AOV_GOAL) return 'dropping_hi';
+  if (diff <= -4) return 'dropping';
+  if (s.mtdAov >= 62) return 'close';
+  return 'push';
+}
+function classifyDl(s) {
+  if (s.lastTxns < 4 || s.mtdTxns < 4) return 'small';
+  const diff = s.lastAov - s.mtdAov;
+  if (s.lastAov >= DL_AOV_GOAL) return 'aov_good';
+  if (diff >= 8) return 'trending';
+  if (diff <= -8 && s.mtdAov >= DL_AOV_GOAL) return 'dropping_hi';
+  if (diff <= -8) return 'dropping';
+  if (s.mtdAov >= 90) return 'close';
+  return 'push';
+}
+function shortName(n) { return n.split(' ')[0]; }
+function noteSf(s, t) {
+  const fn = shortName(s.name), diff = s.lastAov - s.mtdAov, gap = SF_AOV_GOAL - s.mtdAov;
+  const lbl = `${s.lastDay} (${s.lastTxns} txns)`;
+  const at = s.mtdAov >= SF_AOV_GOAL ? 'AOV above goal \u2014 stay consistent.'
+    : gap <= 2.5 ? `$${gap.toFixed(2)} from goal \u2014 one trade-up per ticket.`
+    : 'Bundle or complementary product every transaction.';
+  const adt = s.fullAdd >= SF_ADDON_GOAL ? `Add-on ${s.fullAdd.toFixed(1)}% \u2014 above 4%.`
+    : `Add-on ${s.fullAdd.toFixed(1)}% \u2014 one offer per ticket.`;
+  if (t === 'small') return `${fn} \u2014 ${s.lastTxns} txns last shift, ${s.mtdTxns} MTD. Monitor a full shift.`;
+  if (t === 'star') return `${fn} hit both goals last shift ($${s.lastAov.toFixed(2)} on ${lbl}). ${adt} Call it out.`;
+  if (t === 'aov_good') return `${fn} hit $65 last shift ($${s.lastAov.toFixed(2)} on ${lbl}). ${adt}`;
+  if (t === 'trending') return `${fn} ran $${diff.toFixed(2)} above their MTD avg ($${s.lastAov.toFixed(2)} vs $${s.mtdAov.toFixed(2)}). Acknowledge it. ${at}`;
+  if (t === 'dropping_hi' || t === 'dropping') return `${fn} dropped $${Math.abs(diff).toFixed(2)} below MTD avg ($${s.lastAov.toFixed(2)} vs $${s.mtdAov.toFixed(2)} on ${lbl}). Check-in today. ${at}`;
+  if (t === 'close') return `${fn} at $${s.lastAov.toFixed(2)} last shift \u2014 $${gap.toFixed(2)} from $65. ${at}`;
+  return `${fn} at $${s.lastAov.toFixed(2)} last shift, $${gap.toFixed(2)} below goal. ${at} ${adt}`;
+}
+function noteDl(s, t) {
+  const fn = shortName(s.name), diff = s.lastAov - s.mtdAov, gap = DL_AOV_GOAL - s.mtdAov;
+  const lbl = `${s.lastDay} (${s.lastTxns} deliveries)`;
+  const at = s.mtdAov >= DL_AOV_GOAL ? 'Above $100 target \u2014 keep it going.'
+    : gap <= 8 ? `$${gap.toFixed(2)} from $100 target.`
+    : 'Push higher-value items and bundles on every order.';
+  if (t === 'small') return `${fn} \u2014 ${s.lastTxns} deliveries last shift, ${s.mtdTxns} MTD. Too small to read.`;
+  if (t === 'aov_good') return `${fn} above $100 \u2014 $${s.lastAov.toFixed(2)} last shift (${lbl}). ${at}`;
+  if (t === 'trending') return `${fn} ran $${diff.toFixed(2)} above their avg ($${s.lastAov.toFixed(2)} vs $${s.mtdAov.toFixed(2)}). Good momentum.`;
+  if (t === 'dropping_hi' || t === 'dropping') return `${fn} dropped $${Math.abs(diff).toFixed(2)} from avg ($${s.lastAov.toFixed(2)} vs $${s.mtdAov.toFixed(2)} on ${lbl}). Check in. ${at}`;
+  if (t === 'close') return `${fn} at $${s.lastAov.toFixed(2)} last shift \u2014 $${gap.toFixed(2)} from $100. ${at}`;
+  return `${fn} at $${s.lastAov.toFixed(2)} last shift, $${gap.toFixed(2)} below $100 target. ${at}`;
+}
+
+// ════════════════════════════════════════════════════════════
+// XLSX BUILDER (ExcelJS) — matches sanctuary_reports.py styling exactly
+// ════════════════════════════════════════════════════════════
+const COL = {
+  DK: 'FF155230', DKTEAL: 'FF003A5C', MD: 'FF2E9455', BG: 'FFF0F7F2',
+  GD: 'FFE8A020', MU: 'FF9AB0A0', TX: 'FF1A2620', RD: 'FFC8392A',
+  PU: 'FF6030A0', PB: 'FFF4EEFF', OR: 'FFC06000', OB: 'FFFFF4EC',
+  TEAL: 'FF006080', TEAL_BG: 'FFE0F4F8', GRN_BG: 'FFE8F8EE',
+  RED_BG: 'FFFFF0F0', GRAY_BG: 'FFF8F8F8',
+};
+const STATUS_LABELS = {
+  star: 'On Target', aov_good: 'Strong AOV', trending: 'Trending Up', close: 'Almost There',
+  dropping_hi: 'Check In', dropping: 'Check In', push: 'Needs Push', small: 'Small Sample',
+};
+const STATUS_BG = {
+  star: COL.GRN_BG, aov_good: COL.BG, trending: COL.BG, close: COL.BG,
+  dropping_hi: COL.OB, dropping: COL.OB, push: COL.RED_BG, small: COL.GRAY_BG,
+};
+const STATUS_AC = {
+  star: COL.MD, aov_good: COL.MD, trending: COL.TEAL, close: COL.TEAL,
+  dropping_hi: COL.OR, dropping: COL.OR, push: COL.RD, small: COL.MU,
+};
+function xlFill(argb) { return { type: 'pattern', pattern: 'solid', fgColor: { argb } }; }
+function xlFont(opts) { return Object.assign({ name: 'Arial', size: 10, color: { argb: COL.TX } }, opts); }
+function xlCenter(wrap) { return { horizontal: 'center', vertical: 'middle', wrapText: !!wrap }; }
+function xlLeft() { return { horizontal: 'left', vertical: 'middle' }; }
+function xlRight() { return { horizontal: 'right', vertical: 'middle' }; }
+const THIN_BORDER = { bottom: { style: 'thin', color: { argb: 'FFD0DDD3' } } };
+const MID_BORDER = { top: { style: 'medium', color: { argb: 'FFD5EDDB' } }, bottom: { style: 'medium', color: { argb: 'FFD5EDDB' } } };
+
+function buildCoachingSheet(ws, hdrColor, title, sub, staff, goal, classifyFn, noteFn, channelAov, daysLabel, isDl) {
+  ws.pageSetup = {
+    orientation: 'landscape', paperSize: 1, fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+    margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4, header: 0, footer: 0 },
+    horizontalCentered: true,
+  };
+  const widths = { A:4,B:5,C:26,D:12,E:10,F:10,G:14,H:12,I:10,J:9,K:16,L:74,M:3 };
+  for (const col of Object.keys(widths)) ws.getColumn(col).width = widths[col];
+
+  ws.getRow(1).height = 8;
+  ws.getRow(2).height = 32;
+  ws.getRow(3).height = 18;
+  const allCols = ['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+  for (const col of allCols) { ws.getCell(col + '2').fill = xlFill(hdrColor); ws.getCell(col + '3').fill = xlFill(hdrColor); }
+  ws.mergeCells('B2:L2');
+  ws.getCell('B2').value = title;
+  ws.getCell('B2').font = xlFont({ bold: true, size: 14, color: { argb: 'FFFFFFFF' } });
+  ws.getCell('B2').alignment = xlLeft();
+  ws.mergeCells('B3:L3');
+  ws.getCell('B3').value = sub;
+  ws.getCell('B3').font = xlFont({ size: 9, color: { argb: isDl ? 'FF90D8D8' : 'FFB0D8BE' } });
+  ws.getCell('B3').alignment = xlLeft();
+
+  ws.getRow(4).height = 8;
+  ws.getRow(5).height = 20;
+  for (const col of allCols) ws.getCell(col + '5').fill = xlFill(hdrColor);
+
+  const txl = isDl ? 'Deliveries' : 'Txns';
+  const hc = isDl ? 'FF90D8E8' : 'FFC8E8D0';
+  const headers = [
+    ['B', '#', 'center'], ['C', 'Employee', 'left'], ['D', 'AOV', 'right'],
+    ['E', 'Add-On %', 'center'], ['F', txl, 'center'], ['G', 'Last Shift', 'center'],
+    ['H', 'Last AOV', 'right'], ['I', txl, 'center'], ['J', 'Diff', 'center'],
+    ['K', 'Status', 'center'], ['L', 'Coaching Note', 'left'],
+  ];
+  for (const [col, lbl, ha] of headers) {
+    const cell = ws.getCell(col + '5');
+    cell.value = lbl;
+    cell.font = xlFont({ bold: true, size: 9, color: { argb: hc } });
+    cell.alignment = ha === 'center' ? xlCenter() : xlLeft();
+  }
+
+  const sorted = [...staff].sort((a, b) => b.fullAov - a.fullAov);
+  sorted.forEach((s, i) => {
+    const row = 6 + i;
+    ws.getRow(row).height = 34;
+    const t = classifyFn(s);
+    const bg = STATUS_BG[t], ac = STATUS_AC[t];
+    const diff = s.lastAov - s.mtdAov;
+
+    for (const col of ['B','C','D','E','F','G','H','I','J','K','L']) {
+      const cell = ws.getCell(col + row);
+      cell.fill = xlFill(bg);
+      cell.border = THIN_BORDER;
+    }
+    ws.getCell('B' + row).value = '#' + (i + 1);
+    ws.getCell('B' + row).font = xlFont({ size: 9, color: { argb: i === 0 ? COL.GD : COL.MU } });
+    ws.getCell('B' + row).alignment = xlCenter();
+
+    ws.getCell('C' + row).value = s.name;
+    ws.getCell('C' + row).font = xlFont({ bold: true, size: 11 });
+    ws.getCell('C' + row).alignment = xlLeft();
+
+    const aovC = s.fullAov >= goal ? COL.MD : s.fullAov >= goal * 0.94 ? COL.TEAL : s.fullAov >= goal * 0.88 ? COL.OR : COL.RD;
+    if (s.fullTxns >= 2) {
+      const c = ws.getCell('D' + row);
+      c.value = Math.round(s.fullAov * 100) / 100;
+      c.numFmt = '"$"#,##0.00';
+      c.font = xlFont({ bold: true, size: 12, color: { argb: aovC } });
+      c.alignment = xlRight();
+    }
+
+    const fa = s.fullAdd;
+    const addC = fa >= SF_ADDON_GOAL ? COL.PU : fa > 0 ? COL.MD : COL.MU;
+    if (s.fullTxns >= 2) {
+      const c = ws.getCell('E' + row);
+      c.value = fa / 100;
+      c.numFmt = '0.0%';
+      c.font = xlFont({ bold: fa >= SF_ADDON_GOAL, size: 10, color: { argb: addC } });
+      c.fill = xlFill(fa >= SF_ADDON_GOAL ? COL.PB : bg);
+      c.alignment = xlCenter();
+    }
+
+    ws.getCell('F' + row).value = s.fullTxns;
+    ws.getCell('F' + row).numFmt = '#,##0';
+    ws.getCell('F' + row).font = xlFont({ size: 10, color: { argb: COL.MU } });
+    ws.getCell('F' + row).alignment = xlCenter();
+
+    ws.getCell('G' + row).value = s.lastDay;
+    ws.getCell('G' + row).font = xlFont({ size: 10, color: { argb: COL.MU } });
+    ws.getCell('G' + row).alignment = xlCenter();
+
+    const lastC = s.lastAov >= goal ? COL.MD : s.lastAov >= goal * 0.94 ? COL.TEAL : COL.RD;
+    const hCell = ws.getCell('H' + row);
+    hCell.value = Math.round(s.lastAov * 100) / 100;
+    hCell.numFmt = '"$"#,##0.00';
+    hCell.font = xlFont({ bold: true, size: 12, color: { argb: lastC } });
+    hCell.alignment = xlRight();
+
+    ws.getCell('I' + row).value = s.lastTxns;
+    ws.getCell('I' + row).numFmt = '#,##0';
+    ws.getCell('I' + row).font = xlFont({ size: 10, color: { argb: COL.MU } });
+    ws.getCell('I' + row).alignment = xlCenter();
+
+    const minMtd = isDl ? 4 : 5;
+    const diffC = diff >= 0 ? COL.MD : COL.RD;
+    const jCell = ws.getCell('J' + row);
+    if (s.mtdTxns >= minMtd) {
+      jCell.value = (diff >= 0 ? '+$' : '-$') + Math.abs(diff).toFixed(2);
+      jCell.font = xlFont({ bold: Math.abs(diff) >= (isDl ? 8 : 4), size: 10, color: { argb: diffC } });
+    } else {
+      jCell.value = '\u2014';
+      jCell.font = xlFont({ size: 10, color: { argb: COL.MU } });
+    }
+    jCell.alignment = xlCenter();
+
+    ws.getCell('K' + row).value = STATUS_LABELS[t];
+    ws.getCell('K' + row).font = xlFont({ bold: true, size: 9, color: { argb: ac } });
+    ws.getCell('K' + row).alignment = xlCenter();
+
+    const lCell = ws.getCell('L' + row);
+    lCell.value = noteFn(s, t);
+    lCell.font = xlFont({ size: 9 });
+    lCell.alignment = xlCenter(true);
+  });
+
+  const ar = 6 + sorted.length;
+  ws.getRow(ar).height = 22;
+  for (const col of ['B','C','D','E','F','G','H','I','J','K','L']) {
+    ws.getCell(col + ar).fill = xlFill(isDl ? COL.TEAL_BG : COL.BG);
+    ws.getCell(col + ar).border = MID_BORDER;
+  }
+  ws.getCell('C' + ar).value = (isDl ? 'Channel Avg \u2014 ' : 'Store Average \u2014 ') + daysLabel;
+  ws.getCell('C' + ar).font = xlFont({ bold: true, size: 10, color: { argb: isDl ? COL.TEAL : COL.MD } });
+  ws.getCell('C' + ar).alignment = xlLeft();
+  ws.getCell('D' + ar).value = Math.round(channelAov * 100) / 100;
+  ws.getCell('D' + ar).numFmt = '"$"#,##0.00';
+  ws.getCell('D' + ar).font = xlFont({ bold: true, size: 11, color: { argb: isDl ? COL.TEAL : COL.MD } });
+  ws.getCell('D' + ar).alignment = xlRight();
+  const totalNet = staff.reduce((s, e) => s + e.fullNet, 0);
+  const totalAddNet = staff.reduce((s, e) => s + e.fullNet * e.fullAdd / 100, 0);
+  ws.getCell('E' + ar).value = totalNet ? totalAddNet / totalNet : 0;
+  ws.getCell('E' + ar).numFmt = '0.0%';
+  ws.getCell('E' + ar).font = xlFont({ bold: true, size: 10, color: { argb: COL.PU } });
+  ws.getCell('E' + ar).alignment = xlCenter();
+  ws.getCell('F' + ar).value = staff.reduce((s, e) => s + e.fullTxns, 0);
+  ws.getCell('F' + ar).numFmt = '#,##0';
+  ws.getCell('F' + ar).font = xlFont({ bold: true, size: 10, color: { argb: isDl ? COL.TEAL : COL.MD } });
+  ws.getCell('F' + ar).alignment = xlCenter();
+
+  const fr = ar + 1;
+  ws.getRow(fr).height = 13;
+  ws.mergeCells('B' + fr + ':L' + fr);
+  const g = isDl ? '$100 AOV channel target' : '$65 AOV \u00b7 4% add-on';
+  ws.getCell('B' + fr).value = `* Add-On % = full MTD  \u00b7  Sorted by AOV  \u00b7  ${daysLabel}  \u00b7  Goal: ${g}`;
+  ws.getCell('B' + fr).font = xlFont({ italic: true, size: 8, color: { argb: COL.MU } });
+  ws.getCell('B' + fr).alignment = xlLeft();
+
+  ws.views = [{ showGridLines: false, state: 'frozen', xSplit: 2, ySplit: 5 }];
+}
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function fmtDateLabel(mdY) { const [m, d, y] = mdY.split('/').map(Number); return { month: MONTHS[m - 1], day: d, year: y }; }
+function fmtRange(first, last) {
+  const f = fmtDateLabel(first), l = fmtDateLabel(last);
+  if (f.month === l.month && f.year === l.year) return `${f.month} ${f.day}\u2013${l.day}, ${l.year}`;
+  return `${f.month} ${f.day} \u2013 ${l.month} ${l.day}, ${l.year}`;
+}
+function dayCountLabel(first, last) {
+  const f = fmtDateLabel(first), l = fmtDateLabel(last);
+  return `${f.month.slice(0,3)} ${f.day}\u2013${l.day}`;
+}
+function nextDayLabel(lastDateStr) {
+  const [m, d, y] = lastDateStr.split('/').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + 1);
+  const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return `${DOW[dt.getDay()]} ${MONTHS[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;
+}
+
+async function buildWorkbook(data) {
+  const wb = new ExcelJS.Workbook();
+  const rangeLabel = fmtRange(data.first, data.last);
+  const dayLbl = dayCountLabel(data.first, data.last);
+  const coachingDate = nextDayLabel(data.last);
+
+  const ws1 = wb.addWorksheet('Sales Floor');
+  buildCoachingSheet(ws1, COL.DK,
+    `Sales Floor Coaching Report  |  ${coachingDate}  |  ${rangeLabel} Complete`,
+    `Store MTD: $${data.storeAov.toFixed(2)} AOV  \u00b7  ${data.storeTxns.toLocaleString()} txns  \u00b7  Add-on ${data.storeAdd.toFixed(1)}%  \u00b7  Goal: $65 AOV / 4% Add-On`,
+    data.sfStats, SF_AOV_GOAL, classifySf, noteSf, data.storeAov, dayLbl, false);
+
+  const ws2 = wb.addWorksheet('Delivery');
+  buildCoachingSheet(ws2, COL.DKTEAL,
+    `Delivery Coaching Report  |  ${coachingDate}  |  ${rangeLabel} Complete`,
+    `Channel MTD: $${data.dlAov.toFixed(2)} AOV  \u00b7  ${data.dlTxns.toLocaleString()} deliveries  \u00b7  Goal: $100 AOV`,
+    data.dlStats, DL_AOV_GOAL, classifyDl, noteDl, data.dlAov, dayLbl, true);
+
+  return wb;
+}
+
+// ════════════════════════════════════════════════════════════
+// UI WIRING
+// ════════════════════════════════════════════════════════════
+const dropzone = document.getElementById('dropzone');
+const browseBtn = document.getElementById('browse-btn');
+const fileInput = document.getElementById('file-input');
+const errorBox = document.getElementById('error-box');
+const loadingBox = document.getElementById('loading-box');
+const resetBtn = document.getElementById('reset-btn');
+const downloadBtn = document.getElementById('download-btn');
+
+let currentWorkbook = null;
+let currentFilenameLabel = 'Coaching_Report';
+
+function showError(msg) {
+  errorBox.textContent = '⚠ ' + msg;
+  errorBox.style.display = 'block';
+  loadingBox.style.display = 'none';
+}
+function clearError() { errorBox.style.display = 'none'; }
+
+async function handleFile(file) {
+  if (!file) return;
+  clearError();
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    showError('That doesn\'t look like a CSV file. Export a Treez Product Summary report and try again.');
+    return;
+  }
+  loadingBox.style.display = 'block';
+  document.getElementById('upload-view').querySelector('.dropzone').style.opacity = '0.5';
+  try {
+    const text = await file.text();
+    const rows = parseCSV(text);
+    const data = parseCoachingData(rows);
+    currentWorkbook = await buildWorkbook(data);
+
+    const [m, d] = data.last.split('/').map(Number);
+    const [fm, fd] = data.first.split('/').map(Number);
+    currentFilenameLabel = `Coaching_Report_${MONTHS[fm-1].slice(0,3)}${fd}_${d}`;
+
+    document.getElementById('stat-sf').textContent = '$' + data.storeAov.toFixed(2);
+    document.getElementById('stat-dl').textContent = '$' + data.dlAov.toFixed(2);
+    document.getElementById('result-sub').innerHTML =
+      `Showing <strong>${fmtRange(data.first, data.last)}</strong> &mdash; two tabs, Sales Floor and Delivery.`;
+
+    loadingBox.style.display = 'none';
+    document.getElementById('upload-view').style.display = 'none';
+    document.getElementById('result-view').style.display = 'block';
+  } catch (err) {
+    document.getElementById('dropzone').style.opacity = '1';
+    showError(err.message || 'Could not parse this file. Make sure it\'s an unedited Treez Product Summary export.');
+  }
+}
+
+downloadBtn.addEventListener('click', async () => {
+  if (!currentWorkbook) return;
+  const buffer = await currentWorkbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = currentFilenameLabel + '.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+browseBtn.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('click', (e) => { if (e.target !== browseBtn) fileInput.click(); });
+dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0]));
+
+resetBtn.addEventListener('click', () => {
+  document.getElementById('result-view').style.display = 'none';
+  document.getElementById('upload-view').style.display = 'flex';
+  document.getElementById('dropzone').style.opacity = '1';
+  fileInput.value = '';
+  clearError();
+  currentWorkbook = null;
+});
+</script>
+</body>
+</html>
