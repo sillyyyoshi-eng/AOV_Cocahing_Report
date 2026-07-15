@@ -191,6 +191,7 @@ const NAME_PATTERNS = [
   [/\bashtyn\b|\bashyn\b|\bash\b/i, 'Ashtyn'],
   [/\brayven\b/i, 'Rayven'],
   [/\bdonavn\b|\bdonavan\b/i, 'Donavan'],
+  [/\bdebriana\b|\bdebo\b/i, 'Debriana'],
   [/\bdenelle\b/i, 'Denelle'],
   [/\bparit\b/i, 'Parit'],
   [/\bkathleen\b|\bkat\b/i, 'Kat / Kathleen'],
@@ -208,6 +209,7 @@ function normalizeDispatcher(note) {
 const FLOOR_TYPES = new Set(['POS', 'PICKUP']);
 const ADDON_RE = /add.?on/i;
 const IGNORE_CASHIER_RE = /register|sanctuary/i;
+const EXCLUDED_CASHIERS = new Set(['Dylan Goddard']);
 
 // ════════════════════════════════════════════════════════════
 // DATA LAYER — per-day per-employee stats (verified against
@@ -229,7 +231,7 @@ function parseCoachingData(rows) {
     const tid = (r['Ticket ID'] || '').trim();
     const ch  = (r['Cashier'] || '').trim();
     const date = r['Date Open'];
-    if (!tid || !ch || IGNORE_CASHIER_RE.test(ch)) continue;
+    if (!tid || !ch || IGNORE_CASHIER_RE.test(ch) || EXCLUDED_CASHIERS.has(ch)) continue;
     const net = parseFloat(r['Net Sales']) || 0;
     const isAddon = ADDON_RE.test(r['Product Name'] || '');
     const key = date + '|' + ch;
